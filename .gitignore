@@ -1,0 +1,40 @@
+# ---- C++ / CMake ----
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.o
+*.a
+*.so
+*.dylib
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Run artifacts ----
+# Simulation output is regenerated from config; it is a build product, not source.
+data/*
+!data/.gitkeep
+!data/samples/
+*.log
+
+# ---- Media ----
+# Video is fetched by scripts/, never committed. See docs/conventions.md.
+*.mp4
+*.mov
+*.avi
+
+# ---- Editors / OS ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
