@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mstt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Simulation, analysis, and visualization tooling for the multi-sensor target tracker"
 requires-python = ">=3.11"
 dependencies = [

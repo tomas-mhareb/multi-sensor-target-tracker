@@ -6,6 +6,12 @@
 
 line-length = 100
 
+# Stated explicitly because ruff only infers it from requires-python when its config
+# lives in the same pyproject.toml. Moving the config here lost that inference: ruff
+# fell back to an older default, classified the stdlib module tomllib as third-party,
+# and silently narrowed which pyupgrade rules apply. Must match requires-python.
+target-version = "py311"
+
 [lint]
 select = ["E", "F", "I", "UP", "B", "EXE"]
 
