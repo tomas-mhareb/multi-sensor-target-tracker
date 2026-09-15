@@ -62,13 +62,13 @@ reported as a result.
 |---|---|---|---|---|
 | **SYS-006** | The tracker's filter shall pass a normalized innovation squared (NIS) consistency check, with at least 90% of samples falling inside the 95% chi-squared confidence bound. | Analysis | 0.3 | Open |
 | **SYS-007** | The tracker shall complete one update cycle for 10 simultaneous targets within 10 ms on the reference platform. | Test | 0.5 | **Target** |
-| **SYS-010** | The build pipeline shall compile the project and execute all unit tests on Ubuntu for every push and pull request. | Demonstration | 0.1 | Open |
+| **SYS-010** | The build pipeline shall compile the project and execute all unit tests on Ubuntu for every push and pull request. | Demonstration | 0.1 | Met |
 
 ### Reference platform
 
-Not yet characterized. Populated when the first performance measurement is taken,
-and reported alongside every performance number, since a latency figure without a
-platform is meaningless.
+Characterized as DEV-1 in [`test-results.md`](test-results.md). Performance figures
+are measured on DEV-1 only; the CI runner is shared and unpinned, and is therefore
+not a valid platform for timing claims.
 
 ## 5. Traceability
 
@@ -86,6 +86,6 @@ empty cells are honest indications of unverified requirements, not oversights to
 | SYS-007 | — | — |
 | SYS-008 | — | — |
 | SYS-009 | — | — |
-| SYS-010 | `.github/workflows/ci.yml` | Not yet run — repository not pushed |
+| SYS-010 | `.github/workflows/ci.yml` | Pass — [run 34915031256](https://github.com/tomas-mhareb/multi-sensor-target-tracker/actions/runs/34915031256) |
 | SYS-011 | — | — |
 | SYS-012 | — | — |
