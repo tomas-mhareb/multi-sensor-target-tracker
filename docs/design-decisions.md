@@ -175,3 +175,64 @@ output frozen as golden vectors under `tests/data/golden/`, and the prototype th
 deleted. The C++ implementation is verified against those vectors, which is the same
 technique used to verify hand-written flight code against a model. Two parallel
 implementations are explicitly not maintained.
+
+---
+
+## ADR-007 — Pin C++ dependencies rather than use system packages
+
+**Status:** Accepted · V0.3
+
+**Context.** The C++ engine needs Eigen for linear algebra and GoogleTest for unit
+tests. The development machine has Eigen 5.0.1 from Homebrew; Ubuntu's `libeigen3-dev`
+is 3.4.x.
+
+**Options.**
+
+| Option | Assessment |
+|---|---|
+| `find_package` against whatever each platform provides | Rejected — bakes the macOS/Linux divergence that CI exists to catch directly into the build. A failure on one platform need not reproduce on the other |
+| Vendor the sources into the repository | Rejected — large, obscures history, and updating becomes a manual merge |
+| `FetchContent` pinned to a specific tag | **Accepted** |
+
+**Decision.** Fetch Eigen 3.4.0 and GoogleTest v1.18.0 by pinned git tag, shallow
+cloned, marked `SYSTEM`.
+
+**Reasoning.** The Mac, the CI runner, and the V0.8 Docker image then compile
+identical dependency sources, so a failure on one is reproducible on the others.
+Eigen 3.4.0 rather than 5.x because it is what every apt package, reference, and
+tutorial uses, which makes the project's build match what a reviewer expects.
+
+The cost is a download on a cold build. CI caches it, keyed on the hash of the
+declaration file, so the cache invalidates exactly when a version changes.
+
+**Consequence.** `SYSTEM` is required, not optional. This project compiles its own
+sources with `-Wold-style-cast`, `-Wconversion` and others that Eigen's internals
+legitimately violate. Without `SYSTEM` the build fails inside a dependency we cannot
+fix, and the only remedies would be weakening the warnings for our own code or
+ignoring the output. Third-party headers are held to no warning standard precisely
+because we cannot act on warnings they produce.
+
+---
+
+## ADR-008 — Verify the cross-language contract in both directions
+
+**Status:** Accepted · V0.3
+
+**Context.** ADR-006 established golden vectors: the Python implementation is frozen
+to a committed file, and the C++ implementation is tested against it.
+
+**Decision.** CI additionally regenerates the golden vectors and fails if they differ
+from what is committed.
+
+**Reasoning.** Testing C++ against the file alone leaves a hole. If the Python
+implementation changes and the file is not regenerated, the C++ test still passes --
+C++ still matches the old file -- while Python now disagrees with both. Every check
+would be green with the two implementations silently divergent, which is the exact
+mirrored-track failure the golden vectors exist to prevent.
+
+Checking both halves gives `golden == Python` and `C++ == golden`, and therefore
+`C++ == Python`.
+
+**Consequence.** Changing either implementation requires regenerating the vectors and
+confirming the other side still passes. That friction is the point: the two are a
+contract, and a contract that can be changed unilaterally is not one.

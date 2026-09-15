@@ -1,0 +1,49 @@
+# Static analysis. Distinct from the compiler: the compiler asks whether the code is
+# valid, clang-tidy asks whether it is correct and idiomatic. It catches use of
+# uninitialized members, implicit conversions that lose data, resource handling that
+# is exception-unsafe, and API misuse the language permits but that is virtually
+# always a mistake.
+#
+# Enabled progressively rather than all at once. A check that produces hundreds of
+# warnings on day one gets suppressed and never looked at again.
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-pro-type-member-init,
+  google-build-using-namespace,
+  misc-*,
+  modernize-use-override,
+  modernize-use-nullptr,
+  modernize-use-using,
+  performance-*,
+  readability-braces-around-statements,
+  readability-identifier-naming,
+  -bugprone-easily-swappable-parameters,
+  -misc-non-private-member-variables-in-classes,
+  -misc-include-cleaner
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(include|src|apps)/.*'
+
+CheckOptions:
+  # Naming follows the conventions used throughout this repository: types in
+  # PascalCase, functions and variables in snake_case, private members with a
+  # trailing underscore, constants prefixed with k.
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: k

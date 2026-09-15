@@ -1,0 +1,25 @@
+# Formatting is delegated to a tool so that it is never discussed in review.
+# Based on LLVM style with a wider column limit and four-space indentation, chosen
+# to match the 100-character limit already configured for the Python sources.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+ColumnLimit: 100
+IndentWidth: 4
+AccessModifierOffset: -4
+PointerAlignment: Left
+DerivePointerAlignment: false
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: Yes
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Own headers first, then third-party, then the standard library. Grouping this
+  # way surfaces a header that fails to include what it uses, because it is compiled
+  # before the dependencies it might otherwise have picked up by accident.
+  - Regex: '^"mstt/'
+    Priority: 1
+  - Regex: '^<(Eigen|gtest|gmock)'
+    Priority: 2
+  - Regex: '^<.*'
+    Priority: 3
+SeparateDefinitionBlocks: Always
