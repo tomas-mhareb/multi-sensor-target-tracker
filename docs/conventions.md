@@ -50,7 +50,7 @@ not invalidate any 2D code or recorded data.
 | Zero | +x axis (East) |
 | Positive direction | Counter-clockwise (East → North is +90°) |
 | Internal representation | radians, `double` |
-| Wrapped range | `(-pi, +pi]` |
+| Wrapped range | `[-pi, +pi]` (closed; `-pi` and `+pi` both denote due West) |
 | File / config representation | degrees, in `(-180, +180]` |
 
 This is exactly what `atan2(y, x)` returns, in exactly that range. That is the whole
