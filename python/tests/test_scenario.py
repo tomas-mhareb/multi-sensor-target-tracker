@@ -159,3 +159,88 @@ def test_scenario_d_targets_actually_cross():
     # testing a crossing so much as two targets flying in formation.
     start = states[0].targets
     assert abs(start[0].x_m - start[1].x_m) > 100.0
+
+
+# ------------------------------------------------------- sensor configuration (V0.2)
+
+
+def test_scenario_b_loads_its_radar():
+    scenario = Scenario.from_yaml(REPO_ROOT / "config" / "scenarios" / "B_single_noisy.yaml")
+
+    assert scenario.seed == 20260915
+    assert len(scenario.sensors) == 1
+    radar = scenario.sensors[0]
+    assert radar.sensor_id == "radar_0"
+    assert radar.range_noise_m == 2.0
+    assert radar.bearing_noise_deg == 1.0
+    assert radar.detection_probability == 0.95
+
+
+def test_sensors_require_a_seed():
+    """Randomness without a declared seed cannot satisfy SYS-003."""
+    mapping = valid_mapping(
+        sensors=[
+            {
+                "id": "radar_0",
+                "type": "radar",
+                "position_m": [0.0, 0.0],
+                "update_rate_hz": 10.0,
+                "range_noise_m": 2.0,
+                "bearing_noise_deg": 1.0,
+                "detection_probability": 0.95,
+                "false_alarm_rate_per_scan": 0.5,
+                "max_range_m": 5000.0,
+            }
+        ]
+    )
+    with pytest.raises(ScenarioError, match="'seed' is required"):
+        Scenario.from_mapping(mapping)
+
+
+def test_unknown_sensor_type_rejected():
+    """An unrecognized sensor must fail loudly, not be skipped."""
+    mapping = valid_mapping(seed=1, sensors=[{"id": "lidar_0", "type": "lidar"}])
+    with pytest.raises(ScenarioError, match="unknown sensor type"):
+        Scenario.from_mapping(mapping)
+
+
+def test_physically_invalid_sensor_reported_as_a_configuration_error():
+    """RadarConfig's validation must surface as a user error, not a crash."""
+    mapping = valid_mapping(
+        seed=1,
+        sensors=[
+            {
+                "id": "radar_0",
+                "type": "radar",
+                "position_m": [0.0, 0.0],
+                "update_rate_hz": 10.0,
+                "range_noise_m": 2.0,
+                "bearing_noise_deg": 1.0,
+                "detection_probability": 1.5,
+                "false_alarm_rate_per_scan": 0.5,
+                "max_range_m": 5000.0,
+            }
+        ],
+    )
+    with pytest.raises(ScenarioError, match="detection_probability"):
+        Scenario.from_mapping(mapping)
+
+
+def test_scenario_b_target_never_passes_over_the_radar():
+    """Bearing is undefined at zero range, so the trajectory must stay clear of it.
+
+    Asserting the clearance means a later edit to the scenario cannot silently
+    reintroduce the degenerate geometry.
+    """
+    import math
+
+    scenario = Scenario.from_yaml(REPO_ROOT / "config" / "scenarios" / "B_single_noisy.yaml")
+    radar_x, radar_y = scenario.sensors[0].position_m
+
+    closest = min(
+        math.hypot(t.x_m - radar_x, t.y_m - radar_y)
+        for state in scenario.build_world().run()
+        for t in state.targets
+    )
+
+    assert closest > 100.0, f"target approaches within {closest:.1f} m of the radar"

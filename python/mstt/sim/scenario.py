@@ -14,10 +14,19 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import yaml
 
+from mstt.sensors.radar import RadarConfig, RadarSensor
 from mstt.sim.target import Target
 from mstt.sim.world import World
+
+SENSOR_BUILDERS = {"radar": RadarConfig}
+"""Maps a scenario's sensor ``type`` to its configuration class.
+
+Adding a sensor means adding an entry here and a measurement model in the tracker,
+not a new stage in the pipeline. See ADR-001.
+"""
 
 
 class ScenarioError(ValueError):
@@ -39,12 +48,14 @@ class SimulationConfig:
 
 @dataclass(frozen=True)
 class Scenario:
-    """A fully validated scenario, ready to be turned into a World."""
+    """A fully validated scenario, ready to be turned into a World and sensors."""
 
     name: str
     description: str
     simulation: SimulationConfig
     targets: tuple[Target, ...]
+    sensors: tuple[RadarConfig, ...] = ()
+    seed: int | None = None
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> Scenario:
@@ -72,7 +83,7 @@ class Scenario:
         _check_keys(
             raw,
             required={"name", "simulation", "targets"},
-            optional={"description"},
+            optional={"description", "sensors", "seed"},
             context=source,
         )
 
@@ -111,7 +122,31 @@ class Scenario:
             _parse_target(entry, f"{source}: targets[{i}]") for i, entry in enumerate(targets_raw)
         )
 
-        return cls(name=name, description=description, simulation=simulation, targets=targets)
+        sensors = tuple(
+            _parse_sensor(entry, f"{source}: sensors[{i}]")
+            for i, entry in enumerate(raw.get("sensors", []) or [])
+        )
+
+        seed = raw.get("seed")
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+            raise ScenarioError(f"{source}: 'seed' must be an integer, got {seed!r}")
+
+        # Randomness without a declared seed cannot satisfy SYS-003, and a silent
+        # default would hide that. A scenario with sensors must state its seed.
+        if sensors and seed is None:
+            raise ScenarioError(
+                f"{source}: 'seed' is required when 'sensors' are defined, so that "
+                f"runs are reproducible"
+            )
+
+        return cls(
+            name=name,
+            description=description,
+            simulation=simulation,
+            targets=targets,
+            sensors=sensors,
+            seed=seed,
+        )
 
     def build_world(self) -> World:
         """Construct the World this scenario describes."""
@@ -120,6 +155,24 @@ class Scenario:
             dt_s=self.simulation.timestep_s,
             duration_s=self.simulation.duration_s,
         )
+
+    def build_sensors(self) -> list[RadarSensor]:
+        """Construct the scenario's sensors, each with an independent random stream.
+
+        Streams are derived from the scenario seed with ``SeedSequence.spawn`` rather
+        than by offsetting the seed by hand. Spawning guarantees the streams are
+        statistically independent; seeds that merely differ by one can produce
+        correlated sequences, which would couple one sensor's missed detections to
+        another's and quietly invalidate any fusion result measured from the run.
+        """
+        if not self.sensors:
+            return []
+
+        streams = np.random.SeedSequence(self.seed).spawn(len(self.sensors))
+        return [
+            RadarSensor(config, np.random.default_rng(stream))
+            for config, stream in zip(self.sensors, streams, strict=True)
+        ]
 
 
 def _parse_target(entry: object, context: str) -> Target:
@@ -139,6 +192,63 @@ def _parse_target(entry: object, context: str) -> Target:
         position_m=_require_pair(entry, "position_m", context),
         velocity_mps=_require_pair(entry, "velocity_mps", context),
     )
+
+
+def _parse_sensor(entry: object, context: str) -> RadarConfig:
+    """Validate one sensor entry and build its configuration.
+
+    Dispatch is on the ``type`` field, so an unrecognized sensor fails at load with
+    the supported types listed, rather than being skipped and leaving a scenario that
+    silently produces no measurements.
+    """
+    if not isinstance(entry, Mapping):
+        raise ScenarioError(f"{context}: must be a mapping, got {_type_name(entry)}")
+    if "type" not in entry:
+        raise ScenarioError(f"{context}: missing required key: 'type'")
+
+    sensor_type = entry["type"]
+    if sensor_type not in SENSOR_BUILDERS:
+        raise ScenarioError(
+            f"{context}: unknown sensor type {sensor_type!r}; "
+            f"supported types are {sorted(SENSOR_BUILDERS)}"
+        )
+
+    _check_keys(
+        entry,
+        required={
+            "id",
+            "type",
+            "position_m",
+            "update_rate_hz",
+            "range_noise_m",
+            "bearing_noise_deg",
+            "detection_probability",
+            "false_alarm_rate_per_scan",
+            "max_range_m",
+        },
+        optional=set(),
+        context=context,
+    )
+
+    sensor_id = entry["id"]
+    if not isinstance(sensor_id, str) or not sensor_id.strip():
+        raise ScenarioError(f"{context}: 'id' must be a non-empty string")
+
+    try:
+        return RadarConfig(
+            sensor_id=sensor_id,
+            position_m=_require_pair(entry, "position_m", context),
+            update_rate_hz=_require_float(entry, "update_rate_hz", context),
+            range_noise_m=_require_float(entry, "range_noise_m", context),
+            bearing_noise_deg=_require_float(entry, "bearing_noise_deg", context),
+            detection_probability=_require_float(entry, "detection_probability", context),
+            false_alarm_rate_per_scan=_require_float(entry, "false_alarm_rate_per_scan", context),
+            max_range_m=_require_float(entry, "max_range_m", context),
+        )
+    except ValueError as exc:
+        # RadarConfig enforces physical validity; re-raise as a configuration error
+        # so the CLI reports it as a user mistake rather than a crash.
+        raise ScenarioError(f"{context}: {exc}") from exc
 
 
 def _check_keys(mapping: Mapping, required: set[str], optional: set[str], context: str) -> None:

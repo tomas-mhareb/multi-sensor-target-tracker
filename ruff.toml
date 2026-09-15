@@ -1,0 +1,21 @@
+# Single lint and format configuration for every Python file in the repository.
+#
+# Previously this lived in python/pyproject.toml, which meant ruff applied it only to
+# files under python/ and fell back to its defaults for scripts/ -- two configurations
+# that would drift apart, and one directory silently unchecked.
+
+line-length = 100
+
+# Stated explicitly because ruff only infers it from requires-python when its config
+# lives in the same pyproject.toml. Moving the config here lost that inference: ruff
+# fell back to an older default, classified the stdlib module tomllib as third-party,
+# and silently narrowed which pyupgrade rules apply. Must match requires-python.
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "EXE"]
+
+[lint.isort]
+# Without this, ruff treats mstt as third-party when linting files outside python/
+# and orders its imports inconsistently between the two trees.
+known-first-party = ["mstt"]

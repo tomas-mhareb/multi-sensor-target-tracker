@@ -44,13 +44,26 @@ considered satisfied, regardless of whether the code appears to work.
 |---|---|---|---|---|
 | **SYS-001** | The system shall define simulation scenarios via an external configuration file specifying targets, sensors, duration, and timestep. | Test | 0.1 | Met |
 | **SYS-002** | The simulator shall generate ground-truth trajectories for at least 10 simultaneous targets. | Test | 0.1 | Met |
-| **SYS-003** | The simulator shall produce bit-identical output for a given configuration and random seed. | Test | 0.1 | Met |
-| **SYS-004** | The radar model shall generate range and bearing measurements with configurable Gaussian noise, detection probability, and false-alarm rate. | Test | 0.2 | Open |
+| **SYS-003** | The simulator shall produce bit-identical output for a given configuration and random seed, on a given platform. | Test | 0.1 | Met |
+| **SYS-004** | The radar model shall generate range and bearing measurements with configurable Gaussian noise, detection probability, and false-alarm rate. | Test | 0.2 | Met |
 | **SYS-005** | The tracker shall estimate target position and velocity together with an associated covariance matrix. | Test | 0.3 | Open |
 | **SYS-008** | The track manager shall confirm a track after M detections within N scans, and delete a track after K consecutive missed detections, where M, N, and K are configurable. | Test | 0.6 | Open |
 | **SYS-009** | The system shall emit structured log records containing timestamp, component, severity, and optional track identifier, filtered by a configurable severity threshold. | Inspection | 0.6 | Open |
 | **SYS-011** | The system shall fuse measurements from at least two sensor types having different measurement models into a common track state. | Test | 0.9 | Open |
 | **SYS-012** | The system shall report position RMSE, velocity RMSE, track continuity, and false-track count for each scenario run. | Test | 0.8 | Open |
+
+### Note on SYS-003
+
+Bit-identity is a within-platform property. Values derived from transcendental
+functions can differ in their last place between C library implementations -- Apple's
+libm and glibc disagree by one unit in the last place on `hypot`, observed during V0.3
+-- and IEEE-754 does not require otherwise.
+
+This does not weaken the requirement in practice. Run artifacts are written at six and
+seven decimal places, far coarser than the difference, so `truth.csv` and
+`measurements.jsonl` compare byte for byte across platforms. Only full-precision
+17-digit output, such as the cross-language golden vectors, exposes it, and that
+comparison is made numerically with a tolerance instead. See ADR-008.
 
 ## 4. Performance requirements
 
@@ -79,8 +92,8 @@ empty cells are honest indications of unverified requirements, not oversights to
 |---|---|---|
 | SYS-001 | `test_scenario.py::test_shipped_scenario_a_loads`<br>`test_scenario.py::test_build_world_uses_configured_timing`<br>`test_scenario.py::test_unknown_top_level_key_rejected` | Pass |
 | SYS-002 | `test_world.py::test_supports_at_least_ten_simultaneous_targets`<br>`test_scenario.py::test_scenario_c_has_ten_targets` | Pass |
-| SYS-003 | `test_truth_csv.py::test_output_is_bit_identical_across_runs`<br>`test_world.py::test_timestamps_are_exact_multiples_of_the_timestep` | Pass |
-| SYS-004 | — | — |
+| SYS-003 | `test_truth_csv.py::test_output_is_bit_identical_across_runs`<br>`test_world.py::test_timestamps_are_exact_multiples_of_the_timestep`<br>`test_generate.py::test_run_is_bit_identical_for_the_same_seed` | Pass |
+| SYS-004 | `test_radar.py` (29 tests)<br>`test_generate.py::test_scenario_e_detection_rate_is_consistent_with_its_configuration` | Pass |
 | SYS-005 | — | — |
 | SYS-006 | — | — |
 | SYS-007 | — | — |

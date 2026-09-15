@@ -1,8 +1,8 @@
 name: CI
 
 # Runs on every push to an integration branch and on every pull request.
-# The pipeline grows with the project: Python lint and unit tests from V0.1,
-# a C++ build and ctest from V0.3, sanitizers and static analysis from V0.8.
+# The pipeline grows with the project: Python lint and unit tests from V0.1, a C++
+# build and ctest from V0.3, sanitizers and static analysis at V0.8.
 # See docs/design-decisions.md ADR-002 for why CI exists this early.
 
 on:
@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   python:
-    # Ubuntu, not macOS: CON-002 requires Linux support, and development happens
-    # on macOS. Running CI on the target platform is what surfaces divergence
-    # while it is still one commit's worth of work to fix.
+    # Ubuntu, not macOS: CON-002 requires Linux support, and development happens on
+    # macOS. Running CI on the target platform is what surfaces divergence while it
+    # is still one commit's worth of work to fix.
     name: Python lint and unit tests
     runs-on: ubuntu-latest
 
@@ -39,10 +39,10 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e "./python[dev]"
 
       - name: Lint
-        run: ruff check python
+        run: ruff check python scripts
 
       - name: Check formatting
-        run: ruff format --check python
+        run: ruff format --check python scripts
 
       - name: Unit tests
         run: pytest python/tests -v
@@ -50,6 +50,41 @@ jobs:
       - name: Smoke test the simulator end to end
         # Verifies the CLI actually produces output, not merely that imports resolve.
         run: |
-          python -m mstt.sim.run --scenario config/scenarios/A_single_cv.yaml
-          test -s data/runs/A_single_cv/truth.csv
-          echo "rows: $(($(wc -l < data/runs/A_single_cv/truth.csv) - 1))"
+          python -m mstt.sim.run --scenario config/scenarios/B_single_noisy.yaml
+          test -s data/runs/B_single_noisy/measurements.jsonl
+          echo "measurements: $(wc -l < data/runs/B_single_noisy/measurements.jsonl)"
+
+
+  cpp:
+    name: C++ build and unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Cache fetched dependencies
+        # Eigen and GoogleTest are pinned by tag, so the cache only needs to change
+        # when the declaration does. Keyed on that file's hash for exactly that reason.
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('cmake/Dependencies.cmake') }}
+
+      - name: Configure
+        # Warnings are errors in CI but not in a local developer build. A warning
+        # should stop a change from merging without making it impossible to compile
+        # while mid-way through writing something.
+        run: cmake -B build -G Ninja -DMSTT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Tracker executable runs
+        run: ./build/apps/tracker --version

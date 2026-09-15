@@ -1,0 +1,36 @@
+# Scenario F — heavy false alarms.
+#
+# Scenario B with detection made certain and the false alarm rate raised to 4 per
+# scan, so the only difference from the baseline is clutter. With one real target
+# and four spurious detections per scan, roughly 80 percent of measurements
+# correspond to nothing at all.
+#
+# This is the scenario that punishes a tracker which spawns a track for every
+# unassociated measurement, and it is where the confirmation logic in V0.6 earns its
+# place. Detection probability is pinned at 1.0 so that missed detections cannot
+# contribute to any observed degradation.
+
+name: F_false_alarms
+description: Single target with a radar producing many spurious detections.
+
+seed: 20260915
+
+simulation:
+  duration_s: 60.0
+  timestep_s: 0.1
+
+targets:
+  - id: 1
+    position_m: [-400.0, 200.0]
+    velocity_mps: [8.0, 4.0]
+
+sensors:
+  - id: radar_0
+    type: radar
+    position_m: [0.0, 0.0]
+    update_rate_hz: 10.0
+    range_noise_m: 2.0
+    bearing_noise_deg: 1.0
+    detection_probability: 1.00
+    false_alarm_rate_per_scan: 4.0
+    max_range_m: 1000.0
