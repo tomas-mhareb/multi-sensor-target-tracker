@@ -30,11 +30,21 @@ A single 2D Cartesian frame, right-handed, used by every component.
 
 | Property | Value |
 |---|---|
-| Origin | The surveillance site — by definition the radar's phase centre |
+| Origin | The surveillance site datum. Sensors have positions in this frame and need not sit at the origin |
 | `x` | East, metres, positive East |
 | `y` | North, metres, positive North |
 | Handedness | Right-handed |
 | 3D extension | Add `z` = Up, metres. This is the ENU (East-North-Up) convention |
+
+A sensor's location is part of its configuration, not an assumption baked into the
+frame. A single radar is conventionally placed at the origin for convenience, but
+once a second sensor exists they cannot both be there, and a measurement model that
+assumed a sensor sat at the origin would silently produce wrong geometry for every
+other sensor.
+
+Bearing is undefined at zero range, so scenarios should avoid trajectories that pass
+through a sensor's position. That is a property of polar coordinates, not a defect to
+be handled: at zero range every direction is equally correct.
 
 **Why ENU:** it is the standard local-tangent-plane frame in navigation and robotics,
 and it extends to 3D by appending a coordinate rather than by renaming the existing
