@@ -1,0 +1,23 @@
+# Scenario A — single constant-velocity target.
+#
+# The simplest possible case, and the baseline every later scenario is compared
+# against. One target crosses the surveillance area on a straight line at constant
+# speed, with no noise, no missed detections, and no false alarms.
+#
+# Expected ground truth: a straight line from (0, 0) heading north-east at
+# sqrt(8^2 + 4^2) = 8.944 m/s, reaching (480, 240) after 60 s.
+#
+# Units follow docs/conventions.md: metres, seconds, metres per second, and an
+# East-North world frame with the origin at the surveillance site.
+
+name: A_single_cv
+description: Single target moving at constant velocity across the surveillance area.
+
+simulation:
+  duration_s: 60.0
+  timestep_s: 0.1
+
+targets:
+  - id: 1
+    position_m: [0.0, 0.0]
+    velocity_mps: [8.0, 4.0]
