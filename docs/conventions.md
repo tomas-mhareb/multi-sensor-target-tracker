@@ -93,7 +93,8 @@ SI throughout. No exceptions, no implicit scaling.
 | Acceleration | metre/second² | `_mps2` |
 | Time | second | `_s` |
 | Angle (internal) | radian | `_rad` |
-| Angle (files, config) | degree | `_deg` |
+| Angle (human-authored files) | degree | `_deg` |
+| Angle (machine interchange) | radian | `_rad` |
 | Angular rate | radian/second | `_radps` |
 
 **Rule: every identifier carrying a dimensioned quantity states its unit in its name.**
@@ -103,7 +104,12 @@ This is deliberately slightly verbose. The cost is a few extra characters; the b
 is that a unit error becomes visible at the point of use, during code review, without
 having to trace a variable back to its definition.
 
-Degrees appear only in files a human reads or writes. The boundary is the parser.
+Degrees appear in files a human reads or writes -- scenario configuration, and any
+report intended to be read. Machine-generated interchange between components
+(`measurements.jsonl`, `tracks.jsonl`) uses radians instead, for one specific reason:
+those records carry a covariance alongside each value. Writing a bearing in degrees
+beside a variance in rad-squared invites exactly the unit mismatch this section exists
+to prevent, and a value and its uncertainty must always share units.
 
 ## 4. Time
 
@@ -151,15 +157,55 @@ byte comparison of two runs either matches or it does not.
 Later schemas (`measurements.jsonl`, `tracks.jsonl`) are defined when the components
 that produce them are built, in V0.2 and V0.3.
 
-### 6.2 Run directory layout
+### 6.2 Sensor measurements -- `measurements.jsonl` (V0.2)
+
+One JSON object per line, written in ascending `t_s` order. This is the only file the
+tracking engine reads; it is the machine interface fixed by ADR-005, and the transport
+that carries it -- file, socket, or hardware -- is an implementation detail.
+
+```json
+{"meas_id": 42, "t_s": 1.200000, "sensor_id": "radar_0", "sensor_type": "radar",
+ "frame": "polar", "values": {"range_m": 223.4521, "bearing_rad": 1.1012340},
+ "covariance": [[4.0, 0.0], [0.0, 0.00030462]]}
+```
+
+| Field | Meaning |
+|---|---|
+| `meas_id` | Monotonically increasing, unique within a run. Joins to the evaluation key |
+| `t_s` | Simulation time the measurement was taken |
+| `sensor_id` | Which sensor produced it |
+| `sensor_type` | Selects the measurement model the tracker applies |
+| `frame` | Coordinate frame of `values`; `polar` for radar, `image` for camera |
+| `values` | The measurement itself. Ordered as the covariance rows are ordered |
+| `covariance` | The sensor's R, in the units of `values`, row-major |
+
+**Ground truth never appears in this file.** Which target produced a measurement, and
+whether a measurement is a false alarm, are written separately to
+`measurement_truth.csv`:
+
+```
+meas_id,target_id
+42,1
+43,-1
+```
+
+where `target_id = -1` marks a false alarm. Keeping the association key out of the
+measurement stream makes it structurally impossible for the tracker to read it, rather
+than merely forbidden. A tracker that could see which target produced a measurement
+would score perfectly on data association while implementing none, and the resulting
+metrics would be meaningless. This is the same reasoning as `track_id != target_id` in
+section 5.
+
+### 6.3 Run directory layout
 
 Every scenario run writes to its own directory under `data/runs/`, which is
 git-ignored because it is a build product reproducible from config.
 
 ```
 data/runs/<scenario_name>/
-  truth.csv           # V0.1  ground truth from the simulator
-  measurements.jsonl  # V0.2  noisy sensor measurements
+  truth.csv               # V0.1  ground truth from the simulator
+  measurements.jsonl      # V0.2  noisy sensor measurements (tracker input)
+  measurement_truth.csv   # V0.2  evaluation key, never read by the tracker
   tracks.jsonl        # V0.3  tracker output
   metrics.json        # V0.8  computed performance metrics
   run.log             # structured log
