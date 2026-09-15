@@ -54,21 +54,6 @@ jobs:
           test -s data/runs/B_single_noisy/measurements.jsonl
           echo "measurements: $(wc -l < data/runs/B_single_noisy/measurements.jsonl)"
 
-      - name: Golden vectors are current
-        # Closes the cross-language verification loop. The C++ job proves the C++
-        # implementation matches the committed golden vectors; this step proves those
-        # vectors still match the Python implementation. Without it, a change to the
-        # Python side would leave both other checks passing while the two
-        # implementations silently disagreed -- exactly the mirrored-track failure the
-        # golden vectors exist to prevent.
-        run: |
-          python scripts/generate_golden_vectors.py
-          git diff --exit-code -- tests/data/golden/ || {
-            echo "::error::Golden vectors are stale. The Python implementation changed."
-            echo "Regenerate with: python scripts/generate_golden_vectors.py"
-            echo "Then confirm the C++ tests still pass before committing."
-            exit 1
-          }
 
   cpp:
     name: C++ build and unit tests
@@ -84,7 +69,7 @@ jobs:
       - name: Cache fetched dependencies
         # Eigen and GoogleTest are pinned by tag, so the cache only needs to change
         # when the declaration does. Keyed on that file's hash for exactly that reason.
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/_deps
           key: ${{ runner.os }}-cmake-deps-${{ hashFiles('cmake/Dependencies.cmake') }}

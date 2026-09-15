@@ -236,3 +236,20 @@ Checking both halves gives `golden == Python` and `C++ == golden`, and therefore
 **Consequence.** Changing either implementation requires regenerating the vectors and
 confirming the other side still passes. That friction is the point: the two are a
 contract, and a contract that can be changed unilaterally is not one.
+
+**Amendment, same day.** The Python half was first implemented as a CI step that
+regenerated the file and compared it byte for byte. It failed on the first run: numpy's
+`hypot` differs by one unit in the last place between Apple's libm and glibc, so a range
+of `561.30624241630869` on macOS is `561.30624241630858` on Linux. Bearings were
+identical; only `hypot` differed.
+
+IEEE-754 does not require bit-identical results from transcendental functions across
+implementations, so a byte comparison of values written at full double precision tests
+the C library rather than this project. The check is now a numerical comparison with a
+tolerance of 1e-12, matching the tolerance the C++ side already used -- roughly ten
+orders of magnitude above a ULP difference and ten below any convention error, which is
+exactly the distinction the check needs to make. It also moved from a CI shell step into
+`python/tests/test_golden_vectors.py`, so it runs locally rather than only on a runner.
+
+The two tolerances must be kept equal. A tighter one on either side would reject
+differences the other accepts.
