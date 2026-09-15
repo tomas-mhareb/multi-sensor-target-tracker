@@ -26,6 +26,15 @@ class RunSummary:
 
     scenario_name: str
     seed: int | None
+    sensor_positions: dict[str, tuple[float, float]]
+    """Where each sensor sat, keyed by sensor id.
+
+    Recorded so the run directory is self-describing: measurements are polar and
+    relative to their sensor, so anything reading them back -- a plot, a metrics
+    script, the tracker -- needs the sensor position to place them in the world. A
+    run that required its originating scenario file to be interpretable would not be
+    reproducible on its own.
+    """
     timesteps: int
     truth_rows: int
     scans: int
@@ -111,6 +120,7 @@ def generate_run(scenario: Scenario, out_dir: Path | str) -> RunSummary:
     return RunSummary(
         scenario_name=scenario.name,
         seed=scenario.seed,
+        sensor_positions={s.sensor_id: tuple(s.position_m) for s in scenario.sensors},
         timesteps=world.step_count,
         truth_rows=truth_rows,
         scans=scans,
