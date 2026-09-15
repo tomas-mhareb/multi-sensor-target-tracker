@@ -1,0 +1,15 @@
+# Single lint and format configuration for every Python file in the repository.
+#
+# Previously this lived in python/pyproject.toml, which meant ruff applied it only to
+# files under python/ and fell back to its defaults for scripts/ -- two configurations
+# that would drift apart, and one directory silently unchecked.
+
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "EXE"]
+
+[lint.isort]
+# Without this, ruff treats mstt as third-party when linting files outside python/
+# and orders its imports inconsistently between the two trees.
+known-first-party = ["mstt"]

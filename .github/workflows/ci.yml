@@ -39,10 +39,10 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e "./python[dev]"
 
       - name: Lint
-        run: ruff check python
+        run: ruff check python scripts
 
       - name: Check formatting
-        run: ruff format --check python
+        run: ruff format --check python scripts
 
       - name: Unit tests
         run: pytest python/tests -v
