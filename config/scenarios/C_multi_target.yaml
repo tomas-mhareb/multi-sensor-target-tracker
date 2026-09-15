@@ -1,0 +1,26 @@
+# Scenario C — ten simultaneous targets.
+#
+# Exercises SYS-002 at system level. Targets fan outward from a staging line to
+# the west of the surveillance site at a range of speeds, so that later versions
+# can check whether track count is maintained as density increases.
+#
+# Sensors are added in V0.2; this scenario currently produces ground truth only.
+
+name: C_multi_target
+description: Ten targets on diverging headings at a range of speeds.
+
+simulation:
+  duration_s: 60.0
+  timestep_s: 0.1
+
+targets:
+  - {id: 1,  position_m: [-400.0,  -90.0], velocity_mps: [12.0, -3.0]}
+  - {id: 2,  position_m: [-400.0,  -70.0], velocity_mps: [11.0, -2.0]}
+  - {id: 3,  position_m: [-400.0,  -50.0], velocity_mps: [10.0, -1.0]}
+  - {id: 4,  position_m: [-400.0,  -30.0], velocity_mps: [ 9.0,  0.0]}
+  - {id: 5,  position_m: [-400.0,  -10.0], velocity_mps: [ 8.0,  1.0]}
+  - {id: 6,  position_m: [-400.0,   10.0], velocity_mps: [ 7.0,  2.0]}
+  - {id: 7,  position_m: [-400.0,   30.0], velocity_mps: [ 6.0,  3.0]}
+  - {id: 8,  position_m: [-400.0,   50.0], velocity_mps: [ 5.0,  4.0]}
+  - {id: 9,  position_m: [-400.0,   70.0], velocity_mps: [ 4.0,  5.0]}
+  - {id: 10, position_m: [-400.0,   90.0], velocity_mps: [ 3.0,  6.0]}

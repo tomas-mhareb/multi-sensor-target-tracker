@@ -1,0 +1,29 @@
+# Scenario D — two targets whose paths cross.
+#
+# The hardest case for data association, and the reason the Hungarian algorithm
+# is on the roadmap at V0.5. Target 1 travels East, target 2 travels North, and
+# both occupy (0, 300) at t = 20 s. At the crossing instant a position-only
+# measurement cannot distinguish them, so a tracker that associates on position
+# alone may swap their identities and never recover.
+#
+# The crossing point is deliberately offset 300 m north of the surveillance site
+# rather than placed on top of it: bearing is undefined at zero range, and a
+# degenerate geometry would confound an association failure with a sensor-model
+# singularity. Those must be measurable separately.
+#
+# Sensors are added in V0.2; this scenario currently produces ground truth only.
+
+name: D_crossing
+description: Two targets crossing at a common point, for data-association testing.
+
+simulation:
+  duration_s: 40.0
+  timestep_s: 0.1
+
+targets:
+  - id: 1
+    position_m: [-200.0, 300.0]
+    velocity_mps: [10.0, 0.0]
+  - id: 2
+    position_m: [0.0, 100.0]
+    velocity_mps: [0.0, 10.0]
