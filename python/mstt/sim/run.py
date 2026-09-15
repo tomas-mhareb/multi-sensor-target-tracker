@@ -1,19 +1,20 @@
-"""Command-line entry point for the ground-truth simulator.
+"""Command-line entry point for the scenario simulator.
 
 Usage:
-    python -m mstt.sim.run --scenario config/scenarios/A_single_cv.yaml
+    python -m mstt.sim.run --scenario config/scenarios/B_single_noisy.yaml
 
-Writes truth.csv into a per-scenario run directory under data/runs/, following the
-layout in docs/conventions.md section 6.2.
+Writes run artifacts into a per-scenario directory under data/runs/, following the
+layout in docs/conventions.md section 6.3.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from mstt.io.truth_csv import write_truth_csv
+from mstt.sim.generate import generate_run, summary_as_dict
 from mstt.sim.scenario import Scenario, ScenarioError
 
 DEFAULT_RUN_ROOT = Path("data/runs")
@@ -22,13 +23,10 @@ DEFAULT_RUN_ROOT = Path("data/runs")
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mstt-sim",
-        description="Generate ground-truth target trajectories from a scenario file.",
+        description="Run a scenario: generate ground truth and sensor measurements.",
     )
     parser.add_argument(
-        "--scenario",
-        required=True,
-        type=Path,
-        help="Path to a scenario YAML file.",
+        "--scenario", required=True, type=Path, help="Path to a scenario YAML file."
     )
     parser.add_argument(
         "--out",
@@ -54,21 +52,43 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     out_dir = args.out if args.out is not None else DEFAULT_RUN_ROOT / scenario.name
-    truth_path = out_dir / "truth.csv"
 
-    world = scenario.build_world()
-    rows = write_truth_csv(truth_path, world.run())
+    try:
+        summary = generate_run(scenario, out_dir)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
-    print(f"scenario   : {scenario.name}")
+    (out_dir / "run_summary.json").write_text(json.dumps(summary_as_dict(summary), indent=2) + "\n")
+    _print_summary(scenario, summary, out_dir)
+    return 0
+
+
+def _print_summary(scenario: Scenario, summary, out_dir: Path) -> None:
+    print(f"scenario   : {summary.scenario_name}")
     print(f"targets    : {len(scenario.targets)}")
     print(
         f"duration   : {scenario.simulation.duration_s:g} s "
-        f"@ {scenario.simulation.timestep_s:g} s timestep"
+        f"@ {scenario.simulation.timestep_s:g} s timestep "
+        f"({summary.timesteps} steps)"
     )
-    print(f"timesteps  : {world.step_count}")
-    print(f"truth rows : {rows}")
-    print(f"written    : {truth_path}")
-    return 0
+    print(f"truth rows : {summary.truth_rows}")
+
+    if not scenario.sensors:
+        print("sensors    : none — ground truth only")
+    else:
+        names = ", ".join(s.sensor_id for s in scenario.sensors)
+        print(f"sensors    : {names}  (seed {summary.seed})")
+        print(f"scans      : {summary.scans}")
+        print(
+            f"detections : {summary.detections} of {summary.detection_opportunities} "
+            f"in-range opportunities  ({summary.detection_rate:.1%})"
+        )
+        print(f"missed     : {summary.missed_detections}")
+        print(f"false alarm: {summary.false_alarms}")
+        print(f"measurement: {summary.measurements} total")
+
+    print(f"written    : {out_dir}")
 
 
 if __name__ == "__main__":
