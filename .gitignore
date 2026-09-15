@@ -33,6 +33,25 @@ data/*
 *.mov
 *.avi
 
+# ---- Secrets ----
+# Nothing in this project requires credentials. These patterns exist so that an
+# accidental commit is impossible rather than merely unlikely: the repository is
+# public, and a secret pushed once must be treated as compromised even if the
+# commit is later removed.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+id_rsa*
+id_ed25519*
+credentials
+credentials.*
+secrets.*
+.netrc
+
 # ---- Editors / OS ----
 .DS_Store
 .idea/
